@@ -1,0 +1,4 @@
+/home/angelo/Documentos/cuda_tests/navier_stokes/build/CMakeFiles/program.dir
+/home/angelo/Documentos/cuda_tests/navier_stokes/build/CMakeFiles/run.dir
+/home/angelo/Documentos/cuda_tests/navier_stokes/build/CMakeFiles/edit_cache.dir
+/home/angelo/Documentos/cuda_tests/navier_stokes/build/CMakeFiles/rebuild_cache.dir
