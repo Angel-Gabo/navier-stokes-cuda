@@ -9,10 +9,9 @@ __device__ float u_inicial(float x,float y){
     return 50.0f;
 }
 __device__ float v_inicial(float x,float y){
-    return __cosf(0.6*y*x);
+    return 0.0f;
 }
 
-//Condiciones iniciales extra sugeridas por gemini
 /*
 __device__ float u_inicial(float x, float y) {
     // Aumentamos la amplitud a 40.0f

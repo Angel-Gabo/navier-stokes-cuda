@@ -1,7 +1,0 @@
-{
-	"InstallScripts" : 
-	[
-		"/home/angelo/Documentos/cuda_tests/navier_stokes/build/cmake_install.cmake"
-	],
-	"Parallel" : false
-}

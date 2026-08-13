@@ -1,1 +1,0 @@
-  -L"/usr/lib/gcc/x86_64-pc-linux-gnu/16"  "/opt/cuda/targets/x86_64-linux/lib/libcudart.so" "/opt/cuda/targets/x86_64-linux/lib/libcudart_static.a" /usr/lib/libglfw.so.3.4 -lm -ldl /usr/lib/librt.a /usr/lib/libGLX.so /usr/lib/libOpenGL.so -lcudadevrt -lcudart_static -lrt -lpthread -ldl -latomic_asneeded 

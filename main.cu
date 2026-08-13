@@ -37,6 +37,7 @@ int main(){
 
     cudaFree(0);
     //Tamaño por lado de la malla
+    //OJO, las dimensiones de la imagen y de la malla deben ser iguales
     int N = 500;
     int N_N = N*N;
     //Dimensiones de la caja - dejar cuadrada porque la poisson no la voy a modificar hasta nuevo aviso
@@ -55,9 +56,9 @@ int main(){
     float dy = (yf-yi)/(float)N;
 
     float viscocidad = 0.001;
-    float rho = 1; //Densidad del fluido, dejar en 1
+    float rho = 10; //Densidad del fluido, dejar en 1
     float r = viscocidad*dt/(dx*dx);
-    float g = 100.0f; //Gravedad
+    float g = 0.0f; //Gravedad
 
     printf("Evaluacion de la estabilidad de la solucion: \n");
     printf("%0.5f \n",r);
