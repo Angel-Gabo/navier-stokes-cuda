@@ -55,8 +55,8 @@ int main(){
     float dx = (xf-xi)/(float)N;
     float dy = (yf-yi)/(float)N;
 
-    float viscocidad = 0.001;
-    float rho = 10; //Densidad del fluido, dejar en 1
+    float viscocidad = 0.0001;
+    float rho = 1; //Densidad del fluido, dejar en 1
     float r = viscocidad*dt/(dx*dx);
     float g = 0.0f; //Gravedad
 

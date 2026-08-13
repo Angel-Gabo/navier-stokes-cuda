@@ -19,9 +19,6 @@ La condición de incompresibilidad se denota imponiendo que la divergencia del c
 
 El programa utiliza cálculo distribuido en GPU mediante CUDA, aprovechando las bondades de la memoria compartida (*shared memory*) de los bloques para acelerar la velocidad de solución de las ecuaciones diferenciales.
 
-### Carga de Obstáculos mediante Imágen (Canal Alpha)
-Aprovechando la librería `stb_image`, el simulador permite delimitar objetos y condiciones de frontera directamente mediante imágenes PNG. El **canal alfa** de la imagen se procesa en la GPU para definir la máscara de colisión de los obstáculos en la malla, evitando la necesidad de utilizar formatos complejos o software externo especializado para generar fronteras.
-
 ### Método usado para obtener las soluciones
 
 * **Paso 1:** Resolvemos la ecuación de Navier-Stokes por diferencias finitas ignorando la presión. A esta solución la llamaremos $u^*$ para el campo de velocidades en $x$ e $y$.
