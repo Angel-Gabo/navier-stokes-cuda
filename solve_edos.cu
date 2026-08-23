@@ -106,6 +106,7 @@ __global__ void SolveNSWithoutPressure(float* u,float* v, float* new_u,float* ne
         float laplacian_y_scaled_v = up_v-2*center_v+down_v;
         float laplacian_v = laplacian_x_scaled_v/(s_args.dx*s_args.dx)+laplacian_y_scaled_v/(s_args.dy*s_args.dy);
 
+
         float adv_u_x = (center_u > 0.0f) ? center_u * (center_u - left_u) / s_args.dx 
                                           : center_u * (right_u - center_u) / s_args.dx;
                                           
@@ -118,7 +119,7 @@ __global__ void SolveNSWithoutPressure(float* u,float* v, float* new_u,float* ne
         float adv_v_y = (center_v > 0.0f) ? center_v * (center_v - up_v) / s_args.dy 
                                           : center_v * (down_v - center_v) / s_args.dy;
 
-        float nu = center_u+s_args.dt*(s_args.v*laplacian_u-adv_u_x-adv_u_y);
+        float nu = center_u+s_args.dt*(s_args.v*laplacian_u-adv_u_x-adv_u_y+s_args.fl);
         float nv = center_v+s_args.dt*(s_args.v*laplacian_v-adv_v_x-adv_v_y-s_args.g);
         if (!isfinite(nu) || fabsf(nu) > 1e5f){nu=center_u;}
         if (!isfinite(nv) || fabsf(nv) > 1e5f){nv=center_v;}

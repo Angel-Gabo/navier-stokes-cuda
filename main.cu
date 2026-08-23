@@ -38,27 +38,31 @@ int main(){
     cudaFree(0);
     //Tamaño por lado de la malla
     //OJO, las dimensiones de la imagen y de la malla deben ser iguales
-    int N = 500;
+    int N = 1000;
     int N_N = N*N;
     //Dimensiones de la caja - dejar cuadrada porque la poisson no la voy a modificar hasta nuevo aviso
     float xi = 0.0f;
     float yi = 0.0f;
-    float xf = 20.0f;
+    float xf = 40.0f;
     float yf = xf; //DEJAR ASI PORQUE SI NO TODOS MORIMOS
 
     //Ajustar basandose en la evaluacion que arroja el programa
     float dt = 1e-4;
     int steps_in_frame = 50; //Pasos que calcula la gpu antes de mostrar en pantalla
-    int steps_for_pressure = 30; //Pasos que se usan para la ecuacion de Poisson, entre 20 y 50 esta bien
+    int steps_for_pressure = 20; //Pasos que se usan para la ecuacion de Poisson, entre 20 y 50 esta bien
 
 
     float dx = (xf-xi)/(float)N;
     float dy = (yf-yi)/(float)N;
 
-    float viscocidad = 0.0001;
-    float rho = 1; //Densidad del fluido, dejar en 1
+    float viscocidad = 1e-6;
+    float rho = 10; //Densidad del fluido, dejar en 1
     float r = viscocidad*dt/(dx*dx);
     float g = 0.0f; //Gravedad
+
+    float fuerza_lateral = 100.0f;
+
+    char img_name[256] = "../figura.png";
 
     printf("Evaluacion de la estabilidad de la solucion: \n");
     printf("%0.5f \n",r);
@@ -115,7 +119,7 @@ int main(){
     int width,height, channels;
     int d_channels = 4;
     stbi_set_flip_vertically_on_load(1);
-    unsigned char *img = stbi_load("../figura.png",&width,&height,&channels,d_channels);
+    unsigned char *img = stbi_load(img_name,&width,&height,&channels,d_channels);
 
     uchar4 *img_in_cuda;
 
@@ -144,7 +148,7 @@ int main(){
     dim3 blockDimColors(16, 16);
     dim3 gridDimColors((N + 15)/16, (N + 15)/16);
     
-    ConvertAlpha2Bool<<<blockDimColors,gridDimColors>>>(img_in_cuda,a_img,N);
+    ConvertAlpha2Bool<<<gridDimColors, blockDimColors>>>(img_in_cuda, a_img, N);
 
     stbi_image_free(img); //Ya no ocupamos la imagen
 
@@ -197,7 +201,8 @@ int main(){
         .yi = yi,
         .v = viscocidad,
         .rho = rho,
-        .g = g
+        .g = g,
+        .fl = fuerza_lateral
     };
     GPU_ARGS g_args = {
         .bloques_por_lado=(N + 15) / 16,

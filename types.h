@@ -12,6 +12,7 @@ struct SIM_ARGS {
     float t; //??? NO SE TOCA
     float rho; //Densidad, se deja en 1
     float g; //Gravedad mijo
+    float fl; //??? TAMPOCO SE TOCA
 };
 
 struct GPU_ARGS
