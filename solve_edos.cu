@@ -4,7 +4,7 @@
 #include "ci_functions.cuh"
 
 //Codigo ultra comentado para no perder hilo
-__global__ void SolveNSWithoutPressure(float* u,float* v, float* new_u,float* new_v,bool* a_img,SIM_ARGS s_args,GPU_ARGS g_args){
+__global__ void SolveNSWithoutPressure(float* u,float* v, float* new_u,float* new_v,bool* a_img,float* fx,float* fy,SIM_ARGS s_args,GPU_ARGS g_args){
     __shared__ float cacheU[18][18]; //Aqui consideramos las fronteras del stride
     __shared__ float cacheV[18][18];
     //__shared__ float cachelPhi[16][16]; //Aqui no vamos a necesitar las fronteras
@@ -29,8 +29,14 @@ __global__ void SolveNSWithoutPressure(float* u,float* v, float* new_u,float* ne
     int idx = -1;
     bool alpha_bul;//JAJAJAJJA BUUUUUL
 
+    float fx_v=0.0f;
+    float fy_v=0.0f;
+
+
     if(fila_global>=0 && fila_global<s_args.N && columna_global>=0 && columna_global<s_args.N){
         idx = fila_global*s_args.N+columna_global;
+        fx_v = fx[idx];
+        fy_v = fy[idx];
         alpha_bul = a_img[idx];
         
         float factor_fluido = 1-(float)alpha_bul;
@@ -119,8 +125,8 @@ __global__ void SolveNSWithoutPressure(float* u,float* v, float* new_u,float* ne
         float adv_v_y = (center_v > 0.0f) ? center_v * (center_v - up_v) / s_args.dy 
                                           : center_v * (down_v - center_v) / s_args.dy;
 
-        float nu = center_u+s_args.dt*(s_args.v*laplacian_u-adv_u_x-adv_u_y+s_args.fl);
-        float nv = center_v+s_args.dt*(s_args.v*laplacian_v-adv_v_x-adv_v_y-s_args.g);
+        float nu = center_u+s_args.dt*(s_args.v*laplacian_u-adv_u_x-adv_u_y+s_args.fl+fx_v);
+        float nv = center_v+s_args.dt*(s_args.v*laplacian_v-adv_v_x-adv_v_y-s_args.g+fy_v);
         if (!isfinite(nu) || fabsf(nu) > 1e5f){nu=center_u;}
         if (!isfinite(nv) || fabsf(nv) > 1e5f){nv=center_v;}
 
@@ -335,5 +341,29 @@ __global__ void ConvertAlpha2Bool(uchar4 *img, bool* ptr, int N){
         float alpha = px.w/255.0f;
         
         ptr[idx] = (alpha>=0.5) ? 1 : 0;
+    }
+}
+
+
+__global__ void getForcesFromImage(uchar4 *img, float* ptr_x,float* ptr_y, int N,float max_force){
+    int x = blockIdx.x * blockDim.x + threadIdx.x;
+    int y = blockIdx.y * blockDim.y + threadIdx.y;
+
+    if(x<N && y<N){
+        int idx = y*N + x;
+        uchar4 px = img[idx];
+        float red = px.x/255.0f;
+        float green = px.y/255.0f;
+
+        //Normalizamos entre -1 y 1
+        float x_force = 2*red-1;
+        float y_force = 2*green-1;
+
+        //Para permitir fuerzas variadas vamos a asumir un maximo de fuerza permitido
+        float alpha = max_force*px.w/255.0f;
+        
+        //FACILISIMO
+        ptr_x[idx] = alpha*x_force;
+        ptr_y[idx] = alpha*y_force;
     }
 }

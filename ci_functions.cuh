@@ -6,7 +6,7 @@
 
  
 __device__ float u_inicial(float x,float y){
-    return 100;
+    return 0.0f;
 }
 __device__ float v_inicial(float x,float y){
     return 0.0f;

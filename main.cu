@@ -22,6 +22,38 @@
 #include "screen_config.cuh"
 
 
+
+//CODIGOS DE SALIDA
+// 0 --> No encontro la imagen
+// 1 --> Las dimensiones no coinciden
+//100 --> Todo ok
+
+int check_img_information(int N,int width, int height,int channels,int d_channels, unsigned char *img){
+    //Necesitamos asegurar que las dimensiones coincidan con la simulacion
+    if(!img || width != N || height != N){
+        printf("OOOPS, ocurrio un error... \n");
+        printf("Asegurate que la imagen cargada exista y ademas tenga las dimensiones de la malla \n");
+        //Un easter egg para los curiosos
+        if(!img){
+            //Tenia mucha cafeina mientras escribia esto... pero no lo borrare
+            printf("BUSCA TENER VIDA SOCIAL PORQUE ESTO NO ES LO TUYO \n");
+            printf("AMIGO/A, UNA TAREA TENIAS Y NO LA HICISTE BIEN...");
+            printf("Solo pon el nombre de la imagen correctamente \n");
+            return 0;
+        }
+        if(width != N || height != N){
+            printf("Las dimensiones de la imagen no coinciden, las dimensiones esperadas son ");
+            printf("%dx%d\n",N,N);
+            printf("pero se obtuvo %dx%d \n",width,height);
+            return 1;
+        }
+        //return 0;
+    }
+    return 100;
+}
+
+
+
 int main(){
 
     if (!glfwInit()) return -1;
@@ -55,14 +87,19 @@ int main(){
     float dx = (xf-xi)/(float)N;
     float dy = (yf-yi)/(float)N;
 
-    float viscocidad = 1e-6;
-    float rho = 10; //Densidad del fluido, dejar en 1
+    float viscocidad = 1e-2;
+    float rho = 1; //Densidad del fluido, dejar en 1
     float r = viscocidad*dt/(dx*dx);
     float g = 0.0f; //Gravedad
 
-    float fuerza_lateral = 100.0f;
+    float fuerza_lateral = 0.0f;
+    float max_force = 100.0f;
 
+    //Imagen para añadir objetos en la simulacion
     char img_name[256] = "../figura.png";
+
+    //Imagen para añadir fuentes de campos(fuerzas)
+    char img_f[256] = "../fuerzas.png";
 
     printf("Evaluacion de la estabilidad de la solucion: \n");
     printf("%0.5f \n",r);
@@ -74,12 +111,11 @@ int main(){
         printf("La solucion no sera estable");
     }
     printf("\n");
-
     //Ahora definimos los punteros con los que vamos a trabajar
     //float* cpu_phi = (float*)calloc(N_N,sizeof(float)); //Solo ocupamos este puntero en cpu, todos los demas estaran en gpu
     
     //Cargamos los punteros en gpu
-    float *u,*v,*nu,*nv,*w,*p,*np;
+    float *u,*v,*nu,*nv,*w,*p,*np,*f_x,*f_y;
     bool *a_img;
     cudaMalloc((void**)&u,N_N*sizeof(float));
     cudaMalloc((void**)&nu,N_N*sizeof(float));
@@ -89,7 +125,11 @@ int main(){
     cudaMalloc((void**)&w,N_N*sizeof(float));
     cudaMalloc((void**)&p,N_N*sizeof(float));
     cudaMalloc((void**)&np,N_N*sizeof(float));
+
+    //Punteros para los obstaculos y fuerzas
     cudaMalloc((void**)&a_img,N_N*sizeof(bool));
+    cudaMalloc((void**)&f_x,N_N*sizeof(float));
+    cudaMalloc((void**)&f_y,N_N*sizeof(float));
 
     //Los punteros asociados a la presion van a tener ceros por defecto siempre para evitar problemas al resolver poisson
     cudaMemset(p, 0, N_N*sizeof(float));
@@ -98,7 +138,6 @@ int main(){
 
     float4* d_rgba_buffer;
     cudaMalloc((void**)&d_rgba_buffer, N_N * sizeof(float4));
-
     //Ojo, blocks esta hecho a medida unica y exclusivamente para las ED
     int threads = 256; //NO CAMBIAR
     int bloques_por_lado = (N + 15) / 16;
@@ -114,7 +153,6 @@ int main(){
     eval2DFuntionU<<<init_blocks,threads>>>(fp,N,u);
     eval2DFuntionV<<<init_blocks,threads>>>(fp,N,v);
 
-
     //Cargamos la imagen con objetos dentro
     int width,height, channels;
     int d_channels = 4;
@@ -122,35 +160,34 @@ int main(){
     unsigned char *img = stbi_load(img_name,&width,&height,&channels,d_channels);
 
     uchar4 *img_in_cuda;
-
-    //Necesitamos asegurar que las dimensiones coincidan con la simulacion
-    if(!img || width != N || height != N){
-        printf("OOOPS, ocurrio un error... \n");
-        printf("Asegurate que la imagen cargada exista y ademas tenga las dimensiones de la malla \n");
-        //Un easter egg para los curiosos
-        if(!img){
-            //Tenia mucha cafeina mientras escribia esto... pero no lo borrare
-            printf("BUSCA TENER VIDA SOCIAL PORQUE ESTO NO ES LO TUYO \n");
-            printf("AMIGO/A, UNA TAREA TENIAS Y NO LA HICISTE BIEN...");
-            printf("Solo pon el nombre de la imagen correctamente \n");
-        }
-        if(width != N || height != N){
-            printf("Las dimensiones de la imagen no coinciden, las dimensiones esperadas son ");
-            printf("%dx%d",N,N);
-            printf("pero se obtuvo %dx%d \n",width,height);
-        }
-        //return 0;
-    }
+    int res = check_img_information(N,width,height,channels,d_channels,img);
     cudaMalloc((void**)&img_in_cuda,N*N*sizeof(uchar4));
-    cudaMemcpy(img_in_cuda,img,N*N*sizeof(uchar4),cudaMemcpyHostToDevice);
-    
-    
+    //Solo vamos a cargar la imagen en cuda en caso de que todas las dimensiones coincidan
+    if(res==100){
+        cudaMemcpy(img_in_cuda,img,N*N*sizeof(uchar4),cudaMemcpyHostToDevice);
+    }
     dim3 blockDimColors(16, 16);
     dim3 gridDimColors((N + 15)/16, (N + 15)/16);
     
     ConvertAlpha2Bool<<<gridDimColors, blockDimColors>>>(img_in_cuda, a_img, N);
 
-    stbi_image_free(img); //Ya no ocupamos la imagen
+    stbi_image_free(img);
+
+    //Ahora necesitamos cargar las fuerzas
+    unsigned char *forces = stbi_load(img_f,&width,&height,&channels,d_channels);
+    uchar4* forces_img;
+    res = check_img_information(N,width,height,channels,d_channels,forces);
+    cudaMalloc((void**)&forces_img,N*N*sizeof(uchar4));
+    if(res==100){
+        cudaMemcpy(forces_img,forces,N*N*sizeof(uchar4),cudaMemcpyHostToDevice);
+    }
+
+    getForcesFromImage<<<gridDimColors,blockDimColors>>>(forces_img,f_x,f_y,N,max_force);
+
+    //Limpiamos de memoria tanto la imagen en cpu como la imagen en gpu, pues aqui solo nos interesan los punteros
+    stbi_image_free(forces);
+    cudaFree(forces_img);
+
 
     GLuint textureID;
     glGenTextures(1,&textureID);
@@ -213,7 +250,7 @@ int main(){
         //calculamos el siguiente paso
         for(int i=0;i<steps_in_frame;i++){
             //Resolvemos para U,V sin presion
-            SolveNSWithoutPressure<<<blocks,threads>>>(u,v,nu,nv,a_img,sm_args,g_args);
+            SolveNSWithoutPressure<<<blocks,threads>>>(u,v,nu,nv,a_img,f_x,f_y,sm_args,g_args);
             cudaDeviceSynchronize();
             float* temp_u = u;
             u = nu;
