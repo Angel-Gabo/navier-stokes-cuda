@@ -32,8 +32,11 @@ __global__ void SolveNSWithoutPressure(float* u,float* v, float* new_u,float* ne
     float fx_v=0.0f;
     float fy_v=0.0f;
 
+    int f_clamped = max(0, min(fila_global, s_args.N - 1));
+    int c_clamped = max(0, min(columna_global, s_args.N - 1));
+    int idx_clamped = f_clamped * s_args.N + c_clamped;
 
-    if(fila_global>=0 && fila_global<s_args.N && columna_global>=0 && columna_global<s_args.N){
+    if(fila_global>0 && fila_global<s_args.N && columna_global>0 && columna_global<s_args.N){
         idx = fila_global*s_args.N+columna_global;
         fx_v = fx[idx];
         fy_v = fy[idx];
@@ -46,11 +49,14 @@ __global__ void SolveNSWithoutPressure(float* u,float* v, float* new_u,float* ne
         idx_valido = true;
     }
     else{
-        //Haremos que en las fronteras el fluido no se deslize
-        cacheU[thn_fila+1][thn_columna+1]=0;
-        cacheV[thn_fila+1][thn_columna+1]=0;
-        //cachelPhi[thn_fila][thn_columna] = 0.0f;
-        idx_valido = false;
+        //float alpha_bul = a_img[idx_clamped];
+        //float factor_fluido = 1.0f - alpha_bul;
+        //cacheU[thn_fila + 1][thn_columna + 1] = factor_fluido*u[idx_clamped];
+        //cacheV[thn_fila + 1][thn_columna + 1] = factor_fluido*v[idx_clamped];
+
+
+        cacheU[thn_fila + 1][thn_columna + 1] = 0;
+        cacheV[thn_fila + 1][thn_columna + 1] = 0;
     }
 
     if(tX<68){
@@ -75,11 +81,16 @@ __global__ void SolveNSWithoutPressure(float* u,float* v, float* new_u,float* ne
         
         int fg = fila + n_fila-1;
         int cg = columna + n_columna-1;
-        if(fg>=0 && fg<s_args.N && cg>=0 && cg<s_args.N){
-            cacheU[fila][columna] = u[fg*s_args.N+cg];
-            cacheV[fila][columna] = v[fg*s_args.N+cg];
+        int fg_clamped = max(0, min(fg, s_args.N - 1));
+        int cg_clamped = max(0, min(cg, s_args.N - 1));
+        
+        if(fg >= 0 && fg < s_args.N && cg >= 0 && cg < s_args.N){
+            cacheU[fila][columna] = u[fg * s_args.N + cg];
+            cacheV[fila][columna] = v[fg * s_args.N + cg];
         }
         else{
+            //cacheU[fila][columna] = u[fg_clamped * s_args.N + cg_clamped];
+            //cacheV[fila][columna] = v[fg_clamped * s_args.N + cg_clamped];
             cacheU[fila][columna] = 0;
             cacheV[fila][columna] = 0;
         }
@@ -164,6 +175,9 @@ __global__ void SolvePoisson(float*u, float* v, float* p,float* new_p, SIM_ARGS 
 
     bool idx_valido;
     int idx = -1;
+    int f_clamped = max(0, min(fila_global, s_args.N - 1));
+    int c_clamped = max(0, min(columna_global, s_args.N - 1));
+    int idx_clamped = f_clamped * s_args.N + c_clamped;
     if(fila_global>0 && fila_global<s_args.N && columna_global>0 && columna_global<s_args.N){
         idx = fila_global*s_args.N+columna_global;
         cacheU[thn_fila+1][thn_columna+1] = u[idx];
@@ -173,9 +187,11 @@ __global__ void SolvePoisson(float*u, float* v, float* p,float* new_p, SIM_ARGS 
         idx_valido = true;
     }
     else{
-        
-        cacheU[thn_fila+1][thn_columna+1]=0.0f;
-        cacheV[thn_fila+1][thn_columna+1]=0.0f;
+        //cacheU[thn_fila + 1][thn_columna + 1] = u[idx_clamped];
+        //cacheV[thn_fila + 1][thn_columna + 1] = v[idx_clamped];
+
+        cacheU[thn_fila + 1][thn_columna + 1] = 0;
+        cacheV[thn_fila + 1][thn_columna + 1] = 0;
         if (fila_global == 0) {
             cacheP[thn_fila+1][thn_columna+1] = p[s_args.N + columna_global];
         } 
@@ -202,6 +218,8 @@ __global__ void SolvePoisson(float*u, float* v, float* p,float* new_p, SIM_ARGS 
         
         int fg = fila + n_fila-1;
         int cg = columna + n_columna-1;
+        int fg_clamped = max(0, min(fg, s_args.N - 1));
+        int cg_clamped = max(0, min(cg, s_args.N - 1));
         if(fg>=0 && fg<s_args.N && cg>=0 && cg<s_args.N){
             int idx_fc = fg*s_args.N+cg;
             cacheU[fila][columna] = u[idx_fc];
@@ -209,9 +227,12 @@ __global__ void SolvePoisson(float*u, float* v, float* p,float* new_p, SIM_ARGS 
             cacheP[fila][columna] = p[idx_fc];
         }
         else{
-            cacheU[fila][columna] = 0;
-            cacheV[fila][columna] = 0;
-           int target_fg = fg;
+            //Descomentar esto si se busca Neumann
+            //cacheU[fila][columna] = u[fg_clamped*s_args.N+cg_clamped];
+            //cacheV[fila][columna] = v[fg_clamped*s_args.N+cg_clamped];
+            cacheU[fila][columna]=0;
+            cacheV[fila][columna]=0;
+            int target_fg = fg;
             if(fg < 0){
                 target_fg = 1;
             }
@@ -253,6 +274,7 @@ __global__ void SolvePoisson(float*u, float* v, float* p,float* new_p, SIM_ARGS 
 
         new_p[idx] = newP;
     }
+    
 }
 
 //Aqui vamos a realizar la correccion a partir de la solucion de la ecuacion de Poisson
@@ -307,6 +329,23 @@ __global__ void ComputeVorticity(float* u, float* v, float* w, SIM_ARGS s_args){
         w[idx] = dv_dx - du_dy;
     }
 }
+//Opcion alternativa para graficar
+__global__ void ComputeFluidNorm(float* u, float* v, float* w, SIM_ARGS s_args){
+    //Obtenemos la coordenada en que estamos
+    int x = blockIdx.x * blockDim.x + threadIdx.x;
+    int y = blockIdx.y * blockDim.y + threadIdx.y;
+
+    //Hacemos la clasica verificacion de que (x,y) no se sale de la malla
+    if (x>0 && x<s_args.N-1 && y>0 && y<s_args.N-1) {
+        int idx = y * s_args.N + x;
+        
+        float u_val = u[idx];
+        float v_val = v[idx];
+
+        w[idx] = sqrtf(u_val*u_val+v_val*v_val);
+    }
+}
+
 
 //Por simplicidad y como solo será ejecutada al inicio, la haremos muy sencilla pero veloz
 __global__ void eval2DFuntionU(FParams fp,int N, float* ptr){

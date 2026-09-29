@@ -12,17 +12,18 @@ __global__ void ConvertFloatToRGBA(float* w, float4* rgba_out,uchar4 *img, int N
     if (x < N && y < N) {
         int idx = y * N + x;
         float val = w[idx];
-        float norm = __tanhf(val * 0.5f);
         
-        float r = 0.0f, g = 0.0f, b = 0.0f;
-        if (fabsf(norm) > 0.01f) {
-            if (norm > 0.0f) {
-                r = norm;
-            } else {
-                b = -norm;
-            }
-        }
-        
+        //float norm = __tanhf(val * 0.35f); 
+        float t = __saturatef(val*0.01f); 
+
+        // Interpolación secuencial fluida
+        float r = t*t*t;
+        float g = t*t*(3.0f-2.0f*t);     
+        float b = t+0.2f*t*t;              
+
+        r = fminf(fmaxf(r, 0.0f), 1.0f);
+        g = fminf(fmaxf(g, 0.0f), 1.0f);
+        b = fminf(fmaxf(b, 0.0f), 1.0f);
         uchar4 px = img[idx];
         float img_r = px.x/255.0f;
         float img_g = px.y/255.0f;

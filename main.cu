@@ -1,6 +1,9 @@
 //OJO AL LECTOR INTELIGENTE
 //NO VOY A HACER ENFASIS EN LA DISTRIBUCION DE LA MEMORIA COMPARTIDA EN CUDA
-//Leer main.cu de pde2D
+
+//OJO 2: PORQUE se imprimen mensajes ofensivos al lector habido??
+//RESPUESTA: Porque se me dio mi gana y tenia mucho café encima
+
 
 //Este programa solo va a profundizar en la fisica
 #include <stdio.h>
@@ -56,9 +59,11 @@ int check_img_information(int N,int width, int height,int channels,int d_channel
 
 int main(){
 
+    int window_dim = 800;
+
     if (!glfwInit()) return -1;
     
-    GLFWwindow* window = glfwCreateWindow(800, 800, "PDE 2D", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(window_dim, window_dim, "PDE 2D", NULL, NULL);
     if (!window) { glfwTerminate(); return -1; }
     glfwMakeContextCurrent(window);
 
@@ -78,6 +83,8 @@ int main(){
     float xf = 40.0f;
     float yf = xf; //DEJAR ASI PORQUE SI NO TODOS MORIMOS
 
+    int mode = 1; //0: Vorticidad, 1: Magnitud
+
     //Ajustar basandose en la evaluacion que arroja el programa
     float dt = 1e-4;
     int steps_in_frame = 50; //Pasos que calcula la gpu antes de mostrar en pantalla
@@ -87,13 +94,13 @@ int main(){
     float dx = (xf-xi)/(float)N;
     float dy = (yf-yi)/(float)N;
 
-    float viscocidad = 1e-2;
-    float rho = 1; //Densidad del fluido, dejar en 1
+    float viscocidad = 1e-1;
+    float rho = 10; //Densidad del fluido, dejar en 1
     float r = viscocidad*dt/(dx*dx);
     float g = 0.0f; //Gravedad
 
-    float fuerza_lateral = 0.0f;
-    float max_force = 100.0f;
+    float fuerza_lateral = 1000.0f;
+    float max_force = 1000.0f;
 
     //Imagen para añadir objetos en la simulacion
     char img_name[256] = "../figura.png";
@@ -272,8 +279,13 @@ int main(){
             cudaDeviceSynchronize();
             k++;
         }
-
-        ComputeVorticity<<<gridDimColors, blockDimColors>>>(u, v, w, sm_args); //Vamos a graficar la vorticidad del campo vectorial, no al campo en si
+        if(mode==0){
+            ComputeVorticity<<<gridDimColors, blockDimColors>>>(u, v, w, sm_args); //Vamos a graficar la vorticidad del campo vectorial, no al campo en si
+        }
+        else{
+            ComputeFluidNorm<<<gridDimColors, blockDimColors>>>(u, v, w, sm_args); //Vamos a graficar la magnitud del campo vectorial, no al campo en si
+        }
+        
         ConvertFloatToRGBA<<<gridDimColors, blockDimColors>>>(w, d_rgba_buffer,img_in_cuda, N); //El formato que se usa es float4(son 4 numeros flotantes: rgba)
         cudaDeviceSynchronize();
 
@@ -301,7 +313,7 @@ int main(){
         
         glBlitFramebuffer(
             0, 0, N, N,           
-            0, 0, 800, 800,       
+            0, 0, window_dim, window_dim,       
             GL_COLOR_BUFFER_BIT,  
             GL_NEAREST
         );
