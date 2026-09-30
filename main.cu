@@ -59,7 +59,7 @@ int check_img_information(int N,int width, int height,int channels,int d_channel
 
 int main(){
 
-    int window_dim = 800;
+    int window_dim = 1000;
 
     if (!glfwInit()) return -1;
     
